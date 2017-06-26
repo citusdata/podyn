@@ -31,11 +31,11 @@ import com.citusdata.migration.datamodel.TableEmitter;
  */
 public class DynamoDBReplicator {
 
-	public static TableEmitter createEmitter(int outgoingConnectionCount) throws SQLException {
+	public static TableEmitter createEmitter(String url, int outgoingConnectionCount) throws SQLException {
 		List<TableEmitter> emitters = new ArrayList<>();
 
 		for(int i = 0; i < outgoingConnectionCount; i++) {
-			emitters.add(new StdoutSQLEmitter());
+			emitters.add(new JDBCTableEmitter(url));
 		}
 
 		return new HashedMultiEmitter(emitters);
@@ -52,23 +52,27 @@ public class DynamoDBReplicator {
 		regionOption.setRequired(false);
 		options.addOption(regionOption);
 
-		Option dynamoDBTableOption = new Option("t", "table", true, "DynamoDB table name");
+		Option dynamoDBTableOption = new Option("t", "table", true, "DynamoDB table name of the source");
 		dynamoDBTableOption.setRequired(true);
 		options.addOption(dynamoDBTableOption);
 
-		Option noSchemaOption = new Option("s", "no-schema", false, "Skip initial schema creation");
+		Option postgresURLOption = new Option("u", "postgres-jdbc-url", true, "PostgreSQL JDBC URL of the destination");
+		postgresURLOption.setRequired(false);
+		options.addOption(postgresURLOption);
+
+		Option noSchemaOption = new Option("ns", "no-schema", false, "Skip initial schema creation");
 		noSchemaOption.setRequired(false);
 		options.addOption(noSchemaOption);
 
-		Option noDataOption = new Option("d", "no-data", false, "Skip initial data load");
+		Option noDataOption = new Option("nd", "no-data", false, "Skip initial data load");
 		noDataOption.setRequired(false);
 		options.addOption(noDataOption);
 
-		Option noChangesOption = new Option("c", "no-changes", false, "Skip streaming changes");
+		Option noChangesOption = new Option("nc", "no-changes", false, "Skip streaming changes");
 		noChangesOption.setRequired(false);
 		options.addOption(noChangesOption);
 
-		Option maxScanRateOption = new Option("m", "scan-rate", false, "Maximum reads/sec during scan");
+		Option maxScanRateOption = new Option("sr", "scan-rate", false, "Maximum reads/sec during scan (default 25)");
 		maxScanRateOption.setRequired(false);
 		options.addOption(maxScanRateOption);
 
@@ -88,7 +92,8 @@ public class DynamoDBReplicator {
 			boolean replicateChanges = !cmd.hasOption("no-changes");
 			int maxScanRate = Integer.parseInt(cmd.getOptionValue("scan-rate", "25"));
 			List<String> tableNames = Arrays.asList(cmd.getOptionValue("table").split(","));
-			
+			String postgresURL = cmd.getOptionValue("postgres-jdbc-url");
+
 			String region = cmd.getOptionValue("region", "us-east-1");
 
 			AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
@@ -103,13 +108,20 @@ public class DynamoDBReplicator {
 					withRegion(region).
 					build();
 
-			TableEmitter emitter = createEmitter(10);
+			TableEmitter emitter;
+
+			if (postgresURL != null) {
+				emitter = createEmitter(postgresURL, 10);
+			} else {
+				emitter = new StdoutSQLEmitter();
+			}
+
 			List<DynamoDBTableReplicator> replicators = new ArrayList<>();
 
 			for(String tableName : tableNames) {
 				DynamoDBTableReplicator replicator = new DynamoDBTableReplicator(
 						dynamoDBClient, streamsClient, emitter, tableName);
-				
+
 				replicators.add(replicator);
 			}
 

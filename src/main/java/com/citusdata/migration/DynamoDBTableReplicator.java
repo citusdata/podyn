@@ -40,10 +40,12 @@ public class DynamoDBTableReplicator {
 
 	final AmazonDynamoDBStreams streamsClient;
 	final AmazonDynamoDB dynamoDBClient;
+
 	final TableEmitter emitter;
 	final String dynamoTableName;
 
 	TableSchema tableSchema;
+	ExecutorService executor;
 
 	public DynamoDBTableReplicator(
 			AmazonDynamoDB dynamoDBClient,
@@ -185,7 +187,7 @@ public class DynamoDBTableReplicator {
 		DescribeStreamResult describeStreamResult = streamsClient.describeStream(describeStreamRequest);
 		List<Shard> shards = describeStreamResult.getStreamDescription().getShards();
 
-		ExecutorService executor = Executors.newFixedThreadPool(shards.size());
+		executor = Executors.newFixedThreadPool(shards.size());
 
 		for (Shard shard : shards) {
 			String shardId = shard.getShardId();
@@ -201,11 +203,6 @@ public class DynamoDBTableReplicator {
 		}
 
 		executor.shutdown();
-
-		try {
-			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-		} catch (InterruptedException e) {
-		}
 	}
 
 	void replicateChanges(DynamoDBShardStreamer replicator) {
