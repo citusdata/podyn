@@ -35,10 +35,17 @@ After [setting up your AWS credentials](http://docs.aws.amazon.com/sdk-for-java/
 
 ```
 java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url jdbc:postgresql://host:5432/postgres?sslmode=require&user=citus&password=pw --no-changes --citus
+
+Constructing table schema for table events
+Moving data for table events
+Adding new column to table events: name text
+Adding new column to table events: payload jsonb
 ```
 
 After the command completes, you can continuously stream changes using:
 
 ```
 java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url jdbc:postgresql://host:5432/postgres?sslmode=require&user=citus&password=pw --no-schema --no-data --citus
+Replicating changes for table events
+...
 ```
