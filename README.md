@@ -46,6 +46,7 @@ After the command completes, you can continuously stream changes using:
 
 ```
 java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url jdbc:postgresql://host:5432/postgres?sslmode=require&user=citus&password=pw --no-schema --no-data --citus
+
 Replicating changes for table events
 ...
 ```
