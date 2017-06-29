@@ -38,7 +38,19 @@ public class HashedMultiEmitter implements TableEmitter {
 	}
 
 	@Override
-	public void createTable(TableSchema tableSchema) throws SQLException {
+	public TableSchema fetchSchema(String tableName) {
+		lock.writeLock().lock();
+
+		try {
+			TableEmitter emitter = emitters.get(0);
+			return emitter.fetchSchema(tableName);
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+	@Override
+	public void createTable(TableSchema tableSchema) {
 		lock.writeLock().lock();
 
 		try {
@@ -50,12 +62,12 @@ public class HashedMultiEmitter implements TableEmitter {
 	}
 
 	@Override
-	public void createColumn(TableColumn column) throws SQLException {
+	public void createColumn(TableColumn column) {
 		lock.writeLock().lock();
 
 		try {
 			TableEmitter emitter = emitters.get(0);
-			
+
 			emitter.createColumn(column);
 		} finally {
 			lock.writeLock().unlock();
@@ -63,7 +75,7 @@ public class HashedMultiEmitter implements TableEmitter {
 	}
 
 	@Override
-	public long copyFromReader(TableSchema tableSchema, Reader reader) throws SQLException, IOException {
+	public long copyFromReader(TableSchema tableSchema, Reader reader) {
 		lock.writeLock().lock();
 
 		try {
@@ -76,13 +88,19 @@ public class HashedMultiEmitter implements TableEmitter {
 	}
 
 	@Override
-	public void upsert(TableRow tableRow) throws SQLException {
+	public void upsert(TableRow tableRow) {
 		lock.readLock().lock();
 
 		try {
-			String distributionColumnName = tableRow.tableSchema.getDistributionColumn().name;
-			String distributionColumnValue = tableRow.getValue(distributionColumnName).toString();
-			int emitterIndex = Math.abs(distributionColumnValue.hashCode()) % emitters.size();
+			int emitterIndex = 0;
+			TableColumn distributionColumn = tableRow.tableSchema.getDistributionColumn();
+
+			if (distributionColumn != null) {
+				String distributionColumnName = distributionColumn.name;
+				String distributionColumnValue = tableRow.getValue(distributionColumnName).toString();
+				emitterIndex = Math.abs(distributionColumnValue.hashCode()) % emitters.size();
+			}
+
 			TableEmitter emitter = emitters.get(emitterIndex);
 
 			synchronized (emitter) {
@@ -94,13 +112,19 @@ public class HashedMultiEmitter implements TableEmitter {
 	}
 
 	@Override
-	public void delete(PrimaryKeyValue primaryKeyValue) throws SQLException {
+	public void delete(PrimaryKeyValue primaryKeyValue) {
 		lock.readLock().lock();
 
 		try {
-			String distributionColumnName = primaryKeyValue.tableSchema.getDistributionColumn().name;
-			String distributionColumnValue = primaryKeyValue.getValue(distributionColumnName).toString();
-			int emitterIndex = Math.abs(distributionColumnValue.hashCode()) % emitters.size();
+			int emitterIndex = 0;
+			TableColumn distributionColumn = primaryKeyValue.tableSchema.getDistributionColumn();
+
+			if (distributionColumn != null) {
+				String distributionColumnName = distributionColumn.name;
+				String distributionColumnValue = primaryKeyValue.getValue(distributionColumnName).toString();
+				emitterIndex = Math.abs(distributionColumnValue.hashCode()) % emitters.size();
+			}
+
 			TableEmitter emitter = emitters.get(emitterIndex);
 
 			synchronized (emitter) {

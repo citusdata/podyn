@@ -3,18 +3,18 @@
  */
 package com.citusdata.migration;
 
-public abstract class MigrationException extends RuntimeException {
+public class EmissionException extends MigrationException {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 7432723543474028751L;
 
-	public MigrationException(Exception e) {
+	public EmissionException(Exception e) {
 		super(e);
 	}
 
-	public MigrationException(String message, Object... args) {
+	public EmissionException(String message, Object... args) {
 		super(String.format(message, args));
 	}
 

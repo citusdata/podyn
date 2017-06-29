@@ -1,15 +1,15 @@
 package com.citusdata.migration.datamodel;
 
-import java.io.IOException;
 import java.io.Reader;
-import java.sql.SQLException;
-import java.util.Map;
+
+import com.citusdata.migration.EmissionException;
 
 public interface TableEmitter {
 
-	void createTable(TableSchema tableSchema) throws SQLException;
-	void createColumn(TableColumn column) throws SQLException;
-	long copyFromReader(TableSchema tableSchema, Reader reader) throws SQLException, IOException;
-	void upsert(TableRow tableRow) throws SQLException;
-	void delete(PrimaryKeyValue primaryKeyValue) throws SQLException;
+	TableSchema fetchSchema(String tableName) throws EmissionException;
+	void createTable(TableSchema tableSchema) throws EmissionException;
+	void createColumn(TableColumn column) throws EmissionException;
+	long copyFromReader(TableSchema tableSchema, Reader reader) throws EmissionException;
+	void upsert(TableRow tableRow) throws EmissionException;
+	void delete(PrimaryKeyValue primaryKeyValue) throws EmissionException;
 }

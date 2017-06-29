@@ -22,6 +22,11 @@ public class StdoutSQLEmitter implements TableEmitter {
 
 	public StdoutSQLEmitter() {
 	}
+	
+	@Override
+	public TableSchema fetchSchema(String tableName) {
+		return null;
+	}
 
 	@Override
 	public void createTable(TableSchema tableSchema) {
@@ -29,12 +34,12 @@ public class StdoutSQLEmitter implements TableEmitter {
 	}
 
 	@Override
-	public void createColumn(TableColumn column) throws SQLException {
+	public void createColumn(TableColumn column) {
 		System.out.println(column.toAlterTableAddColumn()+";");
 	}
 
 	@Override
-	public long copyFromReader(TableSchema tableSchema, Reader reader) throws SQLException, IOException {
+	public long copyFromReader(TableSchema tableSchema, Reader reader) {
 		long numLines = 0;
 		String line = null;
 
@@ -56,12 +61,12 @@ public class StdoutSQLEmitter implements TableEmitter {
 	}
 
 	@Override
-	public void upsert(TableRow tableRow) throws SQLException {
+	public void upsert(TableRow tableRow) {
 		System.out.println(tableRow.toUpsert()+";");
 	}
 
 	@Override
-	public void delete(PrimaryKeyValue primaryKeyValue) throws SQLException {
+	public void delete(PrimaryKeyValue primaryKeyValue) {
 		System.out.println(primaryKeyValue.toDelete()+";");
 	}
 

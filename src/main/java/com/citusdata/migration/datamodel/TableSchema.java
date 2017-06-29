@@ -84,6 +84,8 @@ public class TableSchema {
 	}
 
 	public static boolean requiresQuotes(String identifier) {
+		//TODO: detect keywords
+		
 		for (int i = 0; i < identifier.length(); i++) {
 			char ch = identifier.charAt(i);
 			if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || (ch == '_'))) {
@@ -364,5 +366,5 @@ public class TableSchema {
 	public boolean isPrimaryKeyColumn(String key) {
 		return this.primaryKey.contains(key);
 	}
-
+	
 }
