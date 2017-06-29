@@ -12,7 +12,7 @@ mvn package
 
 The JAR file will be at `target/dynamodb-to-postgres-1.0.jar`.
 
-## Migrate data from DynamoDB
+## Replicate data from DynamoDB
 
 Once you've built the JAR, you can run it as follows.
 
