@@ -55,7 +55,7 @@ public class DynamoDBReplicator {
 		postgresURLOption.setRequired(false);
 		options.addOption(postgresURLOption);
 
-		Option noSchemaOption = new Option("ns", "no-schema", false, "Skip initial schema creation");
+		Option noSchemaOption = new Option("ns", "no-schema", false, "Skip schema creation");
 		noSchemaOption.setRequired(false);
 		options.addOption(noSchemaOption);
 
@@ -75,7 +75,7 @@ public class DynamoDBReplicator {
 		citusOption.setRequired(false);
 		options.addOption(citusOption);
 
-		Option numConnectionsOption = new Option("n", "num-connections", true, "Number of connections to the database (default 16)");
+		Option numConnectionsOption = new Option("n", "num-connections", true, "Database connection pool size (default 16)");
 		numConnectionsOption.setRequired(false);
 		options.addOption(numConnectionsOption);
 
@@ -160,8 +160,6 @@ public class DynamoDBReplicator {
 					LOG.info(String.format("Constructing table schema for table %s", replicator.dynamoTableName));
 					
 					replicator.replicateSchema();
-
-					LOG.info(replicator.tableSchema);
 				}
 			}
 
