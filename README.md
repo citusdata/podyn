@@ -1,6 +1,6 @@
-# DynamoDB to Citus migration
+# DynamoDB to Citus replication
 
-The `dynamodb-to-postgres` tool migrates a DynamoDB table to PostgreSQL or Citus by creating and adjusting the table schema, copying the data, and then continuously replaying changes.
+The `dynamodb-to-postgres` tool replicates a DynamoDB table to PostgreSQL or Citus by creating and adjusting the table schema, copying the data, and then continuously replaying changes.
 
 ## Building from source
 
