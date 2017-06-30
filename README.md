@@ -45,7 +45,7 @@ Adding new column to table events: name text
 Adding new column to table events: payload jsonb
 ```
 
-An initial CREATE TABLE statement is constructed from the partition key and secondary indexes of the DynamoDB tables. After that, the data in the DynamoDB table is scanned in batches. Before a batch is sent to postgres, any fields that did not appear in the existing schema are added as new columns. After the new columns are added, COPY is used to load the batch into postgres.
+An initial `CREATE TABLE` statement is constructed from the partition key and secondary indexes of the DynamoDB tables. In additino, a index is created for every secondary index. After that, the data in the DynamoDB table is scanned in batches. Before a batch is sent to postgres, any fields that did not appear in the existing schema are added as new columns. After the new columns are added, `COPY` is used to load the batch into postgres.
 
 ## Replicate changes from DynamoDB
 
@@ -58,6 +58,6 @@ Replicating changes for table events
 ...
 ```
 
-The changes are processed in batches and new fields are added to the table as columns. The changes are translated into DELETE or INSERT INTO .. ON CONFLICT (UPSERT) statements that are sent to postgres using a connection pool in such a way that the ordering of changes to the same key is preserved.
+The changes are processed in batches and new fields are added to the table as columns. The changes are translated into delete  or upsert statements that are sent to postgres using a connection pool in such a way that the ordering of changes to the same key is preserved.
 
 After loading a batch of changes into the database, a checkpoint is made. If the tool is restarted, it will continue from its last checkpoint. The checkpoints are stored in DynamoDB tables prefixed with `d2p_migration_`.
