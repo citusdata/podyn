@@ -30,7 +30,7 @@ usage: dynamodb-to-postgres
  -x,--citus                     Create distributed tables using Citus
 ```
 
-When `-u`/`--postgres-jdbc-url` is omitted, the SQL statements that would otherwise be sent to the database are sent to stdout. When `-t`/`--table` is omitted, all DynamoDB tables in the region are replicated.
+When `--postgres-jdbc-url` is omitted, the SQL statements that would otherwise be sent to the database are sent to stdout. When `--table` is omitted, all DynamoDB tables in the region are replicated.
 
 ## Replicate schema and data from DynamoDB
 
@@ -39,7 +39,7 @@ After [setting up your AWS credentials](http://docs.aws.amazon.com/sdk-for-java/
 ```
 export AWS_REGION=us-east-1
 
-java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url "jdbc:postgresql://host:5432/postgres?sslmode=require&user=citus&password=pw" --schema --data --citus
+java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url "jdbc:postgresql://host:5432/citus?sslmode=require&user=citus&password=pw" --schema --data --citus
 
 Constructing table schema for table events
 Moving data for table events
@@ -54,7 +54,7 @@ When `--schema` is specified, tables will be created in PostgreSQL as described 
 After schema creation and the initial data load, you can continuously stream changes using:
 
 ```
-java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url "jdbc:postgresql://host:5432/postgres?sslmode=require&user=citus&password=pw" --changes --citus
+java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url "jdbc:postgresql://host:5432/citus?sslmode=require&user=citus&password=pw" --changes --citus
 
 Replicating changes for table events
 ...
@@ -98,7 +98,7 @@ CREATE INDEX "pageid-index" ON clicks (pageid);
 SELECT create_distributed_table('clicks', 'siteid');
 ```
 
-A new column is added to the PostgreSQL table whenever an item is processed during the initial data load or while replicating changes that contains a new key. For example, if a `payload` (String) key is encountered, the following command would be sent to the database:
+A new column is added to the PostgreSQL table whenever a new key appears in an item during the initial data load or while replicating changes. For example, if a `payload` (String) key is encountered, the following command would be sent to the database:
 
 ```
 ALTER TABLE clicks ADD COLUMN payload text;
