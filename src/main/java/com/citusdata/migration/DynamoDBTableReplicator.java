@@ -275,7 +275,7 @@ public class DynamoDBTableReplicator {
 		if (tableSchema == null) {
 			throw new TableExistsException("table %s does not exist in destination", dynamoTableName);
 		}
-		
+
 		String tableStreamArn = getStreamArn();
 
 		if (tableStreamArn == null) {
@@ -383,6 +383,12 @@ public class DynamoDBTableReplicator {
 			case "INSERT":
 			case "MODIFY":
 				Map<String,AttributeValue> dynamoItem = streamRecord.getNewImage();
+
+				if(dynamoItem == null) {
+					LOG.error(String.format("the stream for table %s does not have new images", dynamoTableName));
+					System.exit(1);
+				}
+
 				TableRow tableRow = DynamoDBTableReplicator.rowFromDynamoRecord(tableSchema, dynamoItem);
 				emitter.upsert(tableRow);
 				LOG.debug(tableRow.toUpsert());
