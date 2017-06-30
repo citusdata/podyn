@@ -47,7 +47,7 @@ Adding new column to table events: name text
 Adding new column to table events: payload jsonb
 ```
 
-The `--schema` arguments will create the table in PostgreSQL as described in the *Schema conversion rules* section. After that, the data in the DynamoDB table is scanned in batches. Before a batch is sent to postgres, any fields that did not appear in the existing schema are added as new columns. After the new columns are added, `COPY` is used to load the batch into postgres.
+When `--schema` is specified, tables will be created in PostgreSQL as described in the *Schema conversion rules* section. When the `--data` argument is specified, all the data in the DynamoDB table is scanned in batches. Before a batch is sent to postgres, any fields that did not appear in the existing schema are added as new columns. After the new columns are added, `COPY` is used to load the batch into postgres.
 
 ## Replicate changes from DynamoDB
 
@@ -108,4 +108,4 @@ In DynamoDB, the same key can appear with different types as long as it's it's n
 ALTER TABLE clicks ADD COLUMN payload_boolean boolean;
 ```
 
-There are currently no guarantees with regards to which type is preferred. Using the same key for different (postgres) types is best avoided.
+There are currently no guarantees in terms of which type is used for the 'main' column. Using the same key for different (postgres) types is best avoided.
