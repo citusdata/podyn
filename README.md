@@ -30,7 +30,7 @@ usage: dynamodb-to-postgres
  -x,--citus                     Create distributed tables using Citus
 ```
 
-When the URL is omitted, the SQL statements that would otherwise be sent to the database are sent to stdout. When the table name is omitted, all DynamoDB tables in the region are replicated.
+When `-u`/`--postgres-jdbc-url` is omitted, the SQL statements that would otherwise be sent to the database are sent to stdout. When `-t`/`--table` is omitted, all DynamoDB tables in the region are replicated.
 
 ## Replicate schema and data from DynamoDB
 
@@ -39,7 +39,7 @@ After [setting up your AWS credentials](http://docs.aws.amazon.com/sdk-for-java/
 ```
 export AWS_REGION=us-east-1
 
-java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url jdbc:postgresql://host:5432/postgres?sslmode=require&user=citus&password=pw --schema --data --citus
+java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url "jdbc:postgresql://host:5432/postgres?sslmode=require&user=citus&password=pw" --schema --data --citus
 
 Constructing table schema for table events
 Moving data for table events
@@ -51,16 +51,16 @@ When `--schema` is specified, tables will be created in PostgreSQL as described 
 
 ## Stream changes from DynamoDB
 
-After the initial data load, you can continuously stream changes using:
+After schema creation and the initial data load, you can continuously stream changes using:
 
 ```
-java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url jdbc:postgresql://host:5432/postgres?sslmode=require&user=citus&password=pw --changes --citus
+java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url "jdbc:postgresql://host:5432/postgres?sslmode=require&user=citus&password=pw" --changes --citus
 
 Replicating changes for table events
 ...
 ```
 
-The changes are processed in batches and new fields are added to the table as columns. The changes are translated into delete  or upsert statements that are sent to postgres using a connection pool (size specified using `-n`).
+The changes are processed in batches and new fields are added to the table as columns. The changes are translated into delete  or upsert statements that are sent to postgres over multiple  connections (specified using `-n`) to achieve high throughput.
 
 When running the command immediately after a data load, some changes that were made prior to the data load may be re-applied, causing the replicated database to temporarily regress. However, since the changes are applied in the same order they will eventually arrive at the current value. After loading a batch of changes into the database, a checkpoint is made. If the tool is restarted, it will continue from its last checkpoint. The checkpoints are stored in DynamoDB tables prefixed with `d2p_migration_`. 
 
