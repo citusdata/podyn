@@ -1,6 +1,6 @@
 # DynamoDB to PostgreSQL / Citus replication
 
-The `dynamodb-to-postgres` tool replicates DynamoDB tables to PostgreSQL tables, which can optionally be distributed using Citus. It can also keep the tables in sync by continuously replaying changes.
+The `dynamodb-to-postgres` tool replicates DynamoDB tables to PostgreSQL tables, which can optionally be distributed using Citus. It can also keep the tables in sync by continuously streaming changes.
 
 ## Building from source
 
@@ -49,9 +49,9 @@ Adding new column to table events: payload jsonb
 
 When `--schema` is specified, tables will be created in PostgreSQL as described in the *Schema conversion rules* section. When the `--data` argument is specified, all the data in the DynamoDB table is scanned in batches. Before a batch is sent to postgres, any fields that did not appear in the existing schema are added as new columns. After the new columns are added, `COPY` is used to load the batch into postgres.
 
-## Replicate changes from DynamoDB
+## Stream changes from DynamoDB
 
-After the command completes, you can continuously stream changes using:
+After the initial data load, you can continuously stream changes using:
 
 ```
 java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url jdbc:postgresql://host:5432/postgres?sslmode=require&user=citus&password=pw --changes --citus
@@ -61,6 +61,8 @@ Replicating changes for table events
 ```
 
 The changes are processed in batches and new fields are added to the table as columns. The changes are translated into delete  or upsert statements that are sent to postgres using a connection pool in such a way that the ordering of changes to the same key is preserved.
+
+When running the command immediately after a data load, some changes that were made prior to the data load may be re-applied, causing the replicated database to temporarily regress. However, since the changes are applied in the same order they will eventually arrive at the current value.
 
 After loading a batch of changes into the database, a checkpoint is made. If the tool is restarted, it will continue from its last checkpoint. The checkpoints are stored in DynamoDB tables prefixed with `d2p_migration_`.
 
