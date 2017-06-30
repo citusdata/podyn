@@ -1,6 +1,6 @@
 # DynamoDB to PostgreSQL / Citus replication
 
-The `dynamodb-to-postgres` tool replicates DynamoDB tables to PostgreSQL tables, which can optionally be distributed using Citus.
+The `dynamodb-to-postgres` tool replicates DynamoDB tables to PostgreSQL tables, which can optionally be distributed using Citus. It can also keep the tables in sync by continuously replaying changes.
 
 ## Building from source
 
