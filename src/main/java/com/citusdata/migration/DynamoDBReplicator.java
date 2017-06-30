@@ -55,23 +55,19 @@ public class DynamoDBReplicator {
 		postgresURLOption.setRequired(false);
 		options.addOption(postgresURLOption);
 
-		Option noSchemaOption = new Option("ns", "no-schema", false, "Skip schema creation");
+		Option noSchemaOption = new Option("s", "schema", false, "Skip schema creation");
 		noSchemaOption.setRequired(false);
 		options.addOption(noSchemaOption);
 
-		Option noDataOption = new Option("nd", "no-data", false, "Skip initial data load");
+		Option noDataOption = new Option("d", "data", false, "Skip initial data load");
 		noDataOption.setRequired(false);
 		options.addOption(noDataOption);
 
-		Option noChangesOption = new Option("nc", "no-changes", false, "Skip streaming changes");
+		Option noChangesOption = new Option("c", "changes", false, "Skip streaming changes");
 		noChangesOption.setRequired(false);
 		options.addOption(noChangesOption);
 
-		Option noAddColumnsOption = new Option("na", "no-add-columns", false, "Do not add columns to the initial schema");
-		noAddColumnsOption.setRequired(false);
-		options.addOption(noAddColumnsOption);
-
-		Option citusOption = new Option("c", "citus", false, "Create distributed tables using Citus");
+		Option citusOption = new Option("x", "citus", false, "Create distributed tables using Citus");
 		citusOption.setRequired(false);
 		options.addOption(citusOption);
 
@@ -89,15 +85,16 @@ public class DynamoDBReplicator {
 		try {
 			CommandLine cmd = parser.parse(options, args);
 
-			if (cmd.hasOption("help")) {
+			boolean wantHelp = cmd.hasOption("help");
+			boolean replicateSchema = cmd.hasOption("schema");
+			boolean replicateData = cmd.hasOption("data");
+			boolean replicateChanges = cmd.hasOption("changes");
+
+			if (wantHelp || (!replicateSchema && !replicateData && !replicateChanges)) {
 				formatter.printHelp("dynamodb-to-postgres", options);
 				return;
 			}
 
-			boolean replicateSchema = !cmd.hasOption("no-schema");
-			boolean replicateData = !cmd.hasOption("no-data");
-			boolean replicateChanges = !cmd.hasOption("no-changes");
-			boolean addColumnsEnabled = !cmd.hasOption("no-add-columns");
 			boolean useCitus = cmd.hasOption("citus");
 			int maxScanRate = Integer.parseInt(cmd.getOptionValue("scan-rate", "25"));
 			int dbConnectionCount = Integer.parseInt(cmd.getOptionValue("num-connections", "16"));
@@ -129,9 +126,9 @@ public class DynamoDBReplicator {
 			}
 
 			List<DynamoDBTableReplicator> replicators = new ArrayList<>();
-			
+
 			List<String> tableNames = new ArrayList<>();
-			
+
 			if (tableNamesString != null) {
 				tableNames = Arrays.asList(tableNamesString.split(","));
 			} else {
@@ -142,14 +139,14 @@ public class DynamoDBReplicator {
 					}
 				}
 			}
-			
+
 			ExecutorService executor = Executors.newCachedThreadPool();
 
 			for(String tableName : tableNames) {
 				DynamoDBTableReplicator replicator = new DynamoDBTableReplicator(
 						dynamoDBClient, streamsClient, credentialsProvider, executor, emitter, tableName);
 
-				replicator.setAddColumnEnabled(addColumnsEnabled);
+				replicator.setAddColumnEnabled(true);
 				replicator.setUseCitus(useCitus);
 
 				replicators.add(replicator);
@@ -158,7 +155,7 @@ public class DynamoDBReplicator {
 			if (replicateSchema) {
 				for(DynamoDBTableReplicator replicator : replicators) {
 					LOG.info(String.format("Constructing table schema for table %s", replicator.dynamoTableName));
-					
+
 					replicator.replicateSchema();
 				}
 			}
