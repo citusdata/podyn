@@ -4,6 +4,7 @@
 package com.citusdata.migration.datamodel;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,7 @@ public class TableSchema {
 
 		TableColumn column = new TableColumn(this, columnName, type);
 		this.columns.put(columnName, column);
-		
+
 		return column;
 	}
 
@@ -84,13 +85,16 @@ public class TableSchema {
 	}
 
 	public static boolean requiresQuotes(String identifier) {
-		//TODO: detect keywords
-		
 		for (int i = 0; i < identifier.length(); i++) {
 			char ch = identifier.charAt(i);
 			if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || (ch == '_'))) {
 				return true;
 			}
+		}
+
+		int searchIndex = Arrays.binarySearch(PostgresKeywords.KEYWORDS, identifier.toLowerCase());
+		if (searchIndex >= 0) {
+			return true;
 		}
 
 		return false;
@@ -366,5 +370,5 @@ public class TableSchema {
 	public boolean isPrimaryKeyColumn(String key) {
 		return this.primaryKey.contains(key);
 	}
-	
+
 }
