@@ -118,7 +118,7 @@ public class DynamoDBTableReplicator {
 
 	public void replicateSchema() throws TableExistsException {
 		if (tableSchema != null) {
-			throw new TableExistsException("relation \"%s\" already exists", dynamoTableName);
+			throw new TableExistsException("relation %s already exists", dynamoTableName);
 		}
 
 		tableSchema = fetchSourceSchema();
@@ -273,13 +273,13 @@ public class DynamoDBTableReplicator {
 
 	public void replicateChanges() throws StreamNotEnabledException {
 		if (tableSchema == null) {
-			throw new TableExistsException("table \"%s\" does not exist in destination", dynamoTableName);
+			throw new TableExistsException("table %s does not exist in destination", dynamoTableName);
 		}
 		
 		String tableStreamArn = getStreamArn();
 
 		if (tableStreamArn == null) {
-			throw new StreamNotEnabledException("table \"%s\" does not have a stream enabled\n", dynamoTableName);
+			throw new StreamNotEnabledException("table %s does not have a stream enabled\n", dynamoTableName);
 		}
 
 		AmazonDynamoDBStreamsAdapterClient adapterClient = new AmazonDynamoDBStreamsAdapterClient(streamsClient);
@@ -407,7 +407,7 @@ public class DynamoDBTableReplicator {
 
 			if (column == null) {
 				column = tableSchema.addColumn(columnName, valueType);
-				LOG.info(String.format("Adding new column to table \"%s\": %s", tableSchema.tableName, column));
+				LOG.info(String.format("Adding new column to table %s: %s", tableSchema.tableName, column));
 				emitter.createColumn(column);
 			} else if (column.type != valueType) {
 				columnName = columnName + "_" + valueType;
@@ -415,7 +415,7 @@ public class DynamoDBTableReplicator {
 
 				if (column == null) {
 					column = tableSchema.addColumn(columnName, valueType);
-					LOG.info(String.format("Adding new column to table \"%s\": %s", tableSchema.tableName, column));
+					LOG.info(String.format("Adding new column to table %s: %s", tableSchema.tableName, column));
 					emitter.createColumn(column);
 				}
 			}
