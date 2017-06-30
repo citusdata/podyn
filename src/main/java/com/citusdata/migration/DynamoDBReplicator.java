@@ -55,15 +55,15 @@ public class DynamoDBReplicator {
 		postgresURLOption.setRequired(false);
 		options.addOption(postgresURLOption);
 
-		Option noSchemaOption = new Option("s", "schema", false, "Skip schema creation");
+		Option noSchemaOption = new Option("s", "schema", false, "Replicate the table schema");
 		noSchemaOption.setRequired(false);
 		options.addOption(noSchemaOption);
 
-		Option noDataOption = new Option("d", "data", false, "Skip initial data load");
+		Option noDataOption = new Option("d", "data", false, "Replicate the current data");
 		noDataOption.setRequired(false);
 		options.addOption(noDataOption);
 
-		Option noChangesOption = new Option("c", "changes", false, "Skip streaming changes");
+		Option noChangesOption = new Option("c", "changes", false, "Continuously replicate changes");
 		noChangesOption.setRequired(false);
 		options.addOption(noChangesOption);
 
