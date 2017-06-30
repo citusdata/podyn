@@ -143,7 +143,7 @@ public class JDBCTableEmitter implements TableEmitter {
 		try {
 			String distributionColumnName = null;
 
-			distributionColumnStatement.setString(1, tableName);
+			distributionColumnStatement.setString(1, TableSchema.quoteIdentifier(tableName));
 
 			ResultSet distributionColumnResult = distributionColumnStatement.executeQuery();
 

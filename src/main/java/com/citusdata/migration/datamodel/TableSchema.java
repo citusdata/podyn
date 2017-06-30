@@ -161,7 +161,7 @@ public class TableSchema {
 			sb.append("SELECT create_distributed_table('");
 			sb.append(getQualifiedTableName());
 			sb.append("', '");
-			sb.append(distributionColumn.getQuotedIdentifier());
+			sb.append(distributionColumn.name);
 			sb.append("')");
 
 			ddlCommands.add(sb.toString());
@@ -200,7 +200,7 @@ public class TableSchema {
 					sb.append(", ");
 				}
 
-				sb.append(primaryKeyColumn);
+				sb.append(quoteIdentifier(primaryKeyColumn));
 
 				skipComma = false;
 			}
