@@ -64,7 +64,7 @@ The changes are processed in batches and new fields are added to the table as co
 
 When running the command immediately after a data load, some changes that were made prior to the data load may be re-applied, causing the replicated database to temporarily regress. However, since the changes are applied in the same order they will eventually arrive at the current value. After loading a batch of changes into the database, a checkpoint is made. If the tool is restarted, it will continue from its last checkpoint. The checkpoints are stored in DynamoDB tables prefixed with `d2p_migration_`. 
 
-For high availability, it is possible to replicate changes from multiple nodes concurrently. If a node fails, another one will automatically take over its work.
+For high availability, it is possible to replicate changes from multiple nodes concurrently, in which case the work will be evenly divided. If a node fails, the other node(s) will automatically take over its work.
 
 ## Schema conversion rules
 
