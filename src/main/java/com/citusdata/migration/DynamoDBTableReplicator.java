@@ -87,6 +87,7 @@ public class DynamoDBTableReplicator {
 
 	boolean addColumnsEnabled;
 	boolean useCitus;
+	boolean useLowerCaseColumnNames;
 
 	TableSchema tableSchema;
 
@@ -105,6 +106,7 @@ public class DynamoDBTableReplicator {
 		this.dynamoTableName = tableName;
 		this.addColumnsEnabled = true;
 		this.useCitus = false;
+		this.useLowerCaseColumnNames = false;
 		this.tableSchema = emitter.fetchSchema(this.dynamoTableName);
 	}
 
@@ -114,6 +116,10 @@ public class DynamoDBTableReplicator {
 
 	public void setAddColumnEnabled(boolean addColumnEnabled) {
 		this.addColumnsEnabled = addColumnEnabled;
+	}
+
+	public void setUseLowerCaseColumnNames(boolean useLowerCaseColumnNames) {
+		this.useLowerCaseColumnNames = useLowerCaseColumnNames;
 	}
 
 	public void replicateSchema() throws TableExistsException {
@@ -135,6 +141,7 @@ public class DynamoDBTableReplicator {
 
 		for (AttributeDefinition attributeDefinition : attributeDefinitions) {
 			String keyName = attributeDefinition.getAttributeName();
+			String columnName = dynamoKeyToColumnName(keyName);
 			TableColumnType type = TableColumnType.text;
 
 			switch(attributeDefinition.getAttributeType()) {
@@ -146,7 +153,7 @@ public class DynamoDBTableReplicator {
 				break;
 			}
 
-			tableSchema.addColumn(keyName, type);
+			tableSchema.addColumn(columnName, type);
 		}
 
 		List<String> primaryKey = new ArrayList<>();
@@ -155,16 +162,17 @@ public class DynamoDBTableReplicator {
 		for (KeySchemaElement keySchemaElement : keySchema) {
 			String keyName = keySchemaElement.getAttributeName();
 			String keyType = keySchemaElement.getKeyType();
+			String columnName = dynamoKeyToColumnName(keyName);
 
-			TableColumn column = tableSchema.getColumn(keyName);
+			TableColumn column = tableSchema.getColumn(columnName);
 
 			if (useCitus && KeyType.fromValue(keyType) == KeyType.HASH) {
-				tableSchema.setDistributionColumn(keyName);
+				tableSchema.setDistributionColumn(columnName);
 			}
 
 			column.notNull = true;
 
-			primaryKey.add(keyName);
+			primaryKey.add(columnName);
 		}
 
 		tableSchema.setPrimaryKey(primaryKey);
@@ -178,8 +186,9 @@ public class DynamoDBTableReplicator {
 
 				for (KeySchemaElement keySchemaElement : secondaryIndex.getKeySchema()) {
 					String keyName = keySchemaElement.getAttributeName();
+					String columnName = dynamoKeyToColumnName(keyName);
 
-					indexColumns.add(keyName);
+					indexColumns.add(columnName);
 				}
 
 				tableSchema.addIndex(indexName, indexColumns);
@@ -187,6 +196,14 @@ public class DynamoDBTableReplicator {
 		}
 
 		return tableSchema;
+	}
+
+	String dynamoKeyToColumnName(String keyName) {
+		if (useLowerCaseColumnNames) {
+			return keyName.toLowerCase();
+		} else {
+			return keyName;
+		}
 	}
 
 	public void replicateData(int maxScanRate) {
@@ -389,7 +406,7 @@ public class DynamoDBTableReplicator {
 					System.exit(1);
 				}
 
-				TableRow tableRow = DynamoDBTableReplicator.rowFromDynamoRecord(tableSchema, dynamoItem);
+				TableRow tableRow = rowFromDynamoRecord(tableSchema, dynamoItem);
 				emitter.upsert(tableRow);
 				LOG.debug(tableRow.toUpsert());
 				break;
@@ -407,7 +424,8 @@ public class DynamoDBTableReplicator {
 
 	void addNewColumns(Map<String,AttributeValue> item) {
 		for(Map.Entry<String,AttributeValue> entry : item.entrySet()) {
-			String columnName = entry.getKey();
+			String keyName = entry.getKey();
+			String columnName = dynamoKeyToColumnName(keyName);
 			TableColumn column = tableSchema.getColumn(columnName);
 			TableColumnType valueType = DynamoDBTableReplicator.columnTypeFromDynamoValue(entry.getValue());
 
@@ -432,7 +450,8 @@ public class DynamoDBTableReplicator {
 		PrimaryKeyValue keyValue = new PrimaryKeyValue(tableSchema);
 
 		for(Map.Entry<String,AttributeValue> entry : dynamoKeys.entrySet()) {
-			String columnName = entry.getKey();
+			String keyName = entry.getKey();
+			String columnName = dynamoKeyToColumnName(keyName);
 
 			if (!tableSchema.isInPrimaryKey(columnName)) {
 				continue;
@@ -460,11 +479,12 @@ public class DynamoDBTableReplicator {
 		return sb.toString();
 	}
 
-	public static TableRow rowFromDynamoRecord(TableSchema tableSchema, Map<String,AttributeValue> dynamoItem) {
+	public TableRow rowFromDynamoRecord(TableSchema tableSchema, Map<String,AttributeValue> dynamoItem) {
 		TableRow row = tableSchema.createRow();
 
 		for(Map.Entry<String, AttributeValue> entry : dynamoItem.entrySet()) {
-			String columnName = entry.getKey();
+			String keyName = entry.getKey();
+			String columnName = dynamoKeyToColumnName(keyName);
 			TableColumn column = tableSchema.getColumn(columnName);
 
 			if (column == null) {

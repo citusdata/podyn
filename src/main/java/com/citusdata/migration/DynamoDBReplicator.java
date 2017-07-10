@@ -71,6 +71,10 @@ public class DynamoDBReplicator {
 		citusOption.setRequired(false);
 		options.addOption(citusOption);
 
+		Option lowerCaseColumnsOption = new Option("lc", "lower-case-column-names", false, "Use lower case column names");
+		lowerCaseColumnsOption.setRequired(false);
+		options.addOption(lowerCaseColumnsOption);
+
 		Option numConnectionsOption = new Option("n", "num-connections", true, "Database connection pool size (default 16)");
 		numConnectionsOption.setRequired(false);
 		options.addOption(numConnectionsOption);
@@ -96,6 +100,7 @@ public class DynamoDBReplicator {
 			}
 
 			boolean useCitus = cmd.hasOption("citus");
+			boolean useLowerCaseColumnNames = cmd.hasOption("lower-case-column-names");
 			int maxScanRate = Integer.parseInt(cmd.getOptionValue("scan-rate", "25"));
 			int dbConnectionCount = Integer.parseInt(cmd.getOptionValue("num-connections", "16"));
 			String tableNamesString = cmd.getOptionValue("table");
@@ -148,6 +153,7 @@ public class DynamoDBReplicator {
 
 				replicator.setAddColumnEnabled(true);
 				replicator.setUseCitus(useCitus);
+				replicator.setUseLowerCaseColumnNames(useLowerCaseColumnNames);
 
 				replicators.add(replicator);
 			}
