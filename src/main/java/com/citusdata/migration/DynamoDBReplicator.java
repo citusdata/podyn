@@ -111,7 +111,7 @@ public class DynamoDBReplicator {
 					withCredentials(credentialsProvider).
 					build();
 
-			TableEmitter emitter;
+			final TableEmitter emitter;
 
 			if (postgresURL != null) {
 				List<TableEmitter> emitters = new ArrayList<>();
@@ -173,6 +173,13 @@ public class DynamoDBReplicator {
 					replicator.replicateChanges();
 				}
 			}
+			
+			Runtime.getRuntime().addShutdownHook(new Thread() {
+				public void run() {
+					LOG.info("Closing database connections");
+					emitter.close();
+				}
+			});
 		} catch (ParseException e) {
 			LOG.error(e.getMessage());
 			formatter.printHelp("dynamodb-to-postgres", options);

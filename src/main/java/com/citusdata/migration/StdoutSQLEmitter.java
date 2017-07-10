@@ -70,4 +70,9 @@ public class StdoutSQLEmitter implements TableEmitter {
 		System.out.println(primaryKeyValue.toDelete()+";");
 	}
 
+	@Override
+	public void close() {
+		
+	}
+
 }

@@ -135,4 +135,17 @@ public class HashedMultiEmitter implements TableEmitter {
 		}
 	}
 
+	@Override
+	public void close() {
+		lock.writeLock().lock();
+
+		try {
+			for(TableEmitter emitter : emitters) {
+				emitter.close();
+			}
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
 }

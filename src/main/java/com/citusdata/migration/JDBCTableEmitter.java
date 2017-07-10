@@ -208,4 +208,12 @@ public class JDBCTableEmitter implements TableEmitter {
 			throw new EmissionException(e);
 		}
 	}
+	
+	public synchronized void close() {
+		try {
+			currentConnection.close();
+		} catch (SQLException e) {
+			throw new EmissionException(e);
+		}
+	}
 }

@@ -12,4 +12,6 @@ public interface TableEmitter {
 	long copyFromReader(TableSchema tableSchema, Reader reader) throws EmissionException;
 	void upsert(TableRow tableRow) throws EmissionException;
 	void delete(PrimaryKeyValue primaryKeyValue) throws EmissionException;
+	void close() throws EmissionException;
+	
 }
