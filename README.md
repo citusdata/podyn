@@ -19,15 +19,17 @@ Once you've built the JAR, you can run it as follows.
 ```
 java -jar target/dynamodb-to-postgres-1.0.jar --help
 usage: dynamodb-to-postgres
- -c,--changes                   Continuously replicate changes
- -d,--data                      Replicate the current data
- -h,--help                      Show help
- -n,--num-connections <arg>     Database connection pool size (default 16)
- -r,--scan-rate <arg>           Maximum reads/sec during scan (default 25)
- -s,--schema                    Replicate the table schema
- -t,--table <arg>               DynamoDB table name(s) to replicate
- -u,--postgres-jdbc-url <arg>   PostgreSQL JDBC URL of the destination
- -x,--citus                     Create distributed tables using Citus
+ -c,--changes                    Continuously replicate changes
+ -d,--data                       Replicate the current data
+ -h,--help                       Show help
+ -lc,--lower-case-column-names   Use lower case column names
+ -m,--conversion-mode <arg>      Conversion mode, either columns or jsonb (default: columns)
+ -n,--num-connections <arg>      Database connection pool size (default 16)
+ -r,--scan-rate <arg>            Maximum reads/sec during scan (default 25)
+ -s,--schema                     Replicate the table schema
+ -t,--table <arg>                DynamoDB table name(s) to replicate
+ -u,--postgres-jdbc-url <arg>    PostgreSQL JDBC URL of the destination
+ -x,--citus                      Create distributed tables using Citus
 ```
 
 When `--postgres-jdbc-url` is omitted, the SQL statements that would otherwise be sent to the database are sent to stdout. When `--table` is omitted, all DynamoDB tables in the region are replicated.

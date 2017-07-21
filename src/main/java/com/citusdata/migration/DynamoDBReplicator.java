@@ -91,6 +91,7 @@ public class DynamoDBReplicator {
 
 		CommandLineParser parser = new DefaultParser();
 		HelpFormatter formatter = new HelpFormatter();
+		formatter.setWidth(120);
 
 		try {
 			CommandLine cmd = parser.parse(options, args);
@@ -214,7 +215,6 @@ public class DynamoDBReplicator {
 
 		} catch (ParseException e) {
 			LOG.error(e.getMessage());
-			formatter.setWidth(120);
 			formatter.printHelp("dynamodb-to-postgres", options);
 			System.exit(3);
 		} catch (TableExistsException|NonExistingTableException e) {
