@@ -8,8 +8,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -71,6 +73,10 @@ public class DynamoDBReplicator {
 		citusOption.setRequired(false);
 		options.addOption(citusOption);
 
+		Option conversionModeOption = new Option("m", "conversion-mode", true, "Conversion mode, either columns or jsonb (default: columns)");
+		conversionModeOption.setRequired(false);
+		options.addOption(conversionModeOption);
+
 		Option lowerCaseColumnsOption = new Option("lc", "lower-case-column-names", false, "Use lower case column names");
 		lowerCaseColumnsOption.setRequired(false);
 		options.addOption(lowerCaseColumnsOption);
@@ -105,6 +111,15 @@ public class DynamoDBReplicator {
 			int dbConnectionCount = Integer.parseInt(cmd.getOptionValue("num-connections", "16"));
 			String tableNamesString = cmd.getOptionValue("table");
 			String postgresURL = cmd.getOptionValue("postgres-jdbc-url");
+			String conversionModeString = cmd.getOptionValue("conversion-mode", ConversionMode.columns.name());
+
+			ConversionMode conversionMode;
+
+			try {
+				conversionMode = ConversionMode.valueOf(conversionModeString);
+			} catch (IllegalArgumentException e) {
+				throw new ParseException("invalid conversion mode: " + conversionModeString);
+			}
 
 			AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
 
@@ -130,6 +145,13 @@ public class DynamoDBReplicator {
 				emitter = new StdoutSQLEmitter();
 			}
 
+			Runtime.getRuntime().addShutdownHook(new Thread() {
+				public void run() {
+					LOG.info("Closing database connections");
+					emitter.close();
+				}
+			});
+
 			List<DynamoDBTableReplicator> replicators = new ArrayList<>();
 
 			List<String> tableNames = new ArrayList<>();
@@ -154,6 +176,7 @@ public class DynamoDBReplicator {
 				replicator.setAddColumnEnabled(true);
 				replicator.setUseCitus(useCitus);
 				replicator.setUseLowerCaseColumnNames(useLowerCaseColumnNames);
+				replicator.setConversionMode(conversionMode);
 
 				replicators.add(replicator);
 			}
@@ -167,31 +190,51 @@ public class DynamoDBReplicator {
 			}
 
 			if (replicateData) {
+				List<Future<Long>> futureResults = new ArrayList<Future<Long>>();
+
 				for(DynamoDBTableReplicator replicator : replicators) {
-					LOG.info(String.format("Moving data for table %s", replicator.dynamoTableName));
-					replicator.replicateData(maxScanRate);
+					LOG.info(String.format("Replicating data for table %s", replicator.dynamoTableName));
+					Future<Long> futureResult = replicator.startReplicatingData(maxScanRate);
+					futureResults.add(futureResult);
+				}
+
+				for(Future<Long> futureResult : futureResults) {
+					futureResult.get();
 				}
 			}
 
 			if (replicateChanges) {
 				for(DynamoDBTableReplicator replicator : replicators) {
 					LOG.info(String.format("Replicating changes for table %s", replicator.dynamoTableName));
-					replicator.replicateChanges();
+					replicator.startReplicatingChanges();
 				}
+			} else {
+				executor.shutdown();
 			}
-			
-			Runtime.getRuntime().addShutdownHook(new Thread() {
-				public void run() {
-					LOG.info("Closing database connections");
-					emitter.close();
-				}
-			});
+
 		} catch (ParseException e) {
 			LOG.error(e.getMessage());
+			formatter.setWidth(120);
 			formatter.printHelp("dynamodb-to-postgres", options);
 			System.exit(3);
 		} catch (TableExistsException|NonExistingTableException e) {
 			LOG.error(e.getMessage());
+			System.exit(1);
+		} catch (ExecutionException e) {
+			Throwable cause = e.getCause();
+
+			if (cause.getCause() != null) {
+				LOG.error(cause.getCause().getMessage());
+			} else {
+				LOG.error(cause.getMessage());
+			}
+			System.exit(1);
+		} catch (EmissionException e) {
+			if (e.getCause() != null) {
+				LOG.error(e.getCause().getMessage());
+			} else {
+				LOG.error(e.getMessage());
+			}
 			System.exit(1);
 		} catch (RuntimeException e) {
 			e.printStackTrace();

@@ -3,7 +3,6 @@
  */
 package com.citusdata.migration;
 
-import java.io.IOException;
 import java.io.Reader;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -70,16 +69,17 @@ public class JDBCTableEmitter implements TableEmitter {
 			+ "WHERE "
 			+ "  logicalrelid = ?::regclass";	
 
-	final String url;
-
 	final Connection currentConnection;
 	final PreparedStatement describeTableStatement;
 	final PreparedStatement hasCitusStatement;
 	final PreparedStatement distributionColumnStatement;
 
 	public JDBCTableEmitter(String url) throws SQLException {
-		this.url = url;
-		this.currentConnection = DriverManager.getConnection(url);
+		this(DriverManager.getConnection(url));
+	}
+	
+	public JDBCTableEmitter(Connection connection) throws SQLException {
+		this.currentConnection = connection;
 		this.describeTableStatement = currentConnection.prepareStatement(DESCRIBE_TABLE_SQL);
 		this.hasCitusStatement = currentConnection.prepareStatement(HAS_CITUS_SQL);
 		this.distributionColumnStatement = currentConnection.prepareStatement(DISTRIBUTION_COLUMN_SQL);

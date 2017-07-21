@@ -39,4 +39,8 @@ public class TableRowBatch {
 		return new StringReader(toCopyInput());
 	}
 
+	public long size() {
+		return tableRows.size();
+	}
+
 }

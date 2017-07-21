@@ -11,8 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -88,6 +89,7 @@ public class DynamoDBTableReplicator {
 	boolean addColumnsEnabled;
 	boolean useCitus;
 	boolean useLowerCaseColumnNames;
+	ConversionMode conversionMode;
 
 	TableSchema tableSchema;
 
@@ -120,6 +122,18 @@ public class DynamoDBTableReplicator {
 
 	public void setUseLowerCaseColumnNames(boolean useLowerCaseColumnNames) {
 		this.useLowerCaseColumnNames = useLowerCaseColumnNames;
+	}
+
+	public void setConversionMode(ConversionMode conversionMode) {
+		this.conversionMode = conversionMode;
+	}
+
+	String dynamoKeyToColumnName(String keyName) {
+		if (useLowerCaseColumnNames) {
+			return keyName.toLowerCase();
+		} else {
+			return keyName;
+		}
 	}
 
 	public void replicateSchema() throws TableExistsException {
@@ -195,21 +209,27 @@ public class DynamoDBTableReplicator {
 			}
 		}
 
+		if(conversionMode == ConversionMode.jsonb) {
+			tableSchema.addColumn("data", TableColumnType.jsonb);
+		}
+
 		return tableSchema;
 	}
 
-	String dynamoKeyToColumnName(String keyName) {
-		if (useLowerCaseColumnNames) {
-			return keyName.toLowerCase();
-		} else {
-			return keyName;
-		}
+	public Future<Long> startReplicatingData(final int maxScanRate) {
+		return executor.submit(new Callable<Long>() {
+			@Override
+			public Long call() throws Exception {
+				return replicateData(maxScanRate);
+			}
+		});
 	}
 
-	public void replicateData(int maxScanRate) {
+	public long replicateData(int maxScanRate) {
 		RateLimiter rateLimiter = RateLimiter.create(maxScanRate);
 
 		Map<String,AttributeValue> lastEvaluatedScanKey = null;
+		long numRowsReplicated = 0;
 
 		while(true) {
 			ScanResult scanResult = scanWithRetries(lastEvaluatedScanKey);
@@ -223,10 +243,14 @@ public class DynamoDBTableReplicator {
 			TableRowBatch tableRowBatch = new TableRowBatch();
 
 			for(Map<String,AttributeValue> dynamoItem : scanResult.getItems()) {
-				TableRow tableRow = rowFromDynamoRecord(tableSchema, dynamoItem);
+				TableRow tableRow = rowFromDynamoRecord(dynamoItem);
 
 				tableRowBatch.addRow(tableRow);
 			}
+
+			LOG.info(String.format("Replicated %d rows to table %s", tableRowBatch.size(), tableSchema.tableName));
+
+			numRowsReplicated += tableRowBatch.size();
 
 			/* load the batch using COPY */
 			emitter.copyFromReader(tableSchema, tableRowBatch.asCopyReader());
@@ -248,6 +272,8 @@ public class DynamoDBTableReplicator {
 			// Let the rate limiter wait until our desired throughput "recharges"
 			rateLimiter.acquire(permitsToConsume);
 		}
+
+		return numRowsReplicated;
 	}
 
 	private ScanResult scanWithRetries(Map<String, AttributeValue> lastEvaluatedScanKey) {
@@ -288,7 +314,7 @@ public class DynamoDBTableReplicator {
 	}
 
 
-	public void replicateChanges() throws StreamNotEnabledException {
+	public void startReplicatingChanges() throws StreamNotEnabledException {
 		if (tableSchema == null) {
 			throw new TableExistsException("table %s does not exist in destination", dynamoTableName);
 		}
@@ -406,7 +432,7 @@ public class DynamoDBTableReplicator {
 					System.exit(1);
 				}
 
-				TableRow tableRow = rowFromDynamoRecord(tableSchema, dynamoItem);
+				TableRow tableRow = rowFromDynamoRecord(dynamoItem);
 				emitter.upsert(tableRow);
 				LOG.debug(tableRow.toUpsert());
 				break;
@@ -420,9 +446,16 @@ public class DynamoDBTableReplicator {
 
 			LOG.debug(streamRecord);
 		}
+
+		LOG.info(String.format("Replicated %d changes to table %s", records.size(), tableSchema.tableName));
 	}
 
 	void addNewColumns(Map<String,AttributeValue> item) {
+		if(conversionMode == ConversionMode.jsonb) {
+			/* don't add new columns in jsonb mode */
+			return;
+		}
+
 		for(Map.Entry<String,AttributeValue> entry : item.entrySet()) {
 			String keyName = entry.getKey();
 			String columnName = dynamoKeyToColumnName(keyName);
@@ -479,7 +512,39 @@ public class DynamoDBTableReplicator {
 		return sb.toString();
 	}
 
-	public TableRow rowFromDynamoRecord(TableSchema tableSchema, Map<String,AttributeValue> dynamoItem) {
+	public TableRow rowFromDynamoRecord(Map<String,AttributeValue> dynamoItem) {
+		if (conversionMode == ConversionMode.jsonb) {
+			return rowWithJsonbFromDynamoRecord(dynamoItem);
+		} else {
+			return rowWithColumnsFromDynamoRecord(dynamoItem);
+
+		}
+	}
+
+	public TableRow rowWithJsonbFromDynamoRecord(Map<String,AttributeValue> dynamoItem) {
+		TableRow row = tableSchema.createRow();
+		Item item = new Item();
+
+		for(Map.Entry<String, AttributeValue> entry : dynamoItem.entrySet()) {
+			String keyName = entry.getKey();
+			String columnName = dynamoKeyToColumnName(keyName);
+			TableColumn column = tableSchema.getColumn(columnName);
+			AttributeValue typedValue = entry.getValue();
+			TableColumnValue columnValue = columnValueFromDynamoValue(typedValue);
+
+			if (column != null) {
+				row.setValue(columnName, columnValue);
+			}
+
+			item.with(keyName, columnValue.datum);
+		}
+
+		row.setValue("data", item.toJSON());
+
+		return row;
+	}
+
+	public TableRow rowWithColumnsFromDynamoRecord(Map<String,AttributeValue> dynamoItem) {
 		TableRow row = tableSchema.createRow();
 
 		for(Map.Entry<String, AttributeValue> entry : dynamoItem.entrySet()) {
@@ -501,7 +566,6 @@ public class DynamoDBTableReplicator {
 
 				row.setValue(columnName + "_" + columnValue.type, columnValue);
 			}
-
 		}
 
 		return row;
