@@ -7,6 +7,8 @@ The `dynamodb-to-postgres` tool replicates DynamoDB tables to PostgreSQL tables,
 To build a shaded JAR, run:
 
 ```
+git clone https://github.com/citusdata/dynamodb-to-postgres.git
+cd dynamodb-to-postgres
 mvn package
 ```
 
