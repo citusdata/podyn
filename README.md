@@ -1,4 +1,4 @@
-# DynamoDB to PostgreSQL / Citus replication
+# Podyn: DynamoDB to PostgreSQL replication
 
 The `podyn` tool replicates DynamoDB tables to PostgreSQL tables, which can optionally be distributed using Citus. It can also keep the tables in sync by continuously streaming changes.
 
