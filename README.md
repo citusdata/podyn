@@ -43,7 +43,7 @@ After [setting up your AWS credentials](http://docs.aws.amazon.com/sdk-for-java/
 ```
 export AWS_REGION=us-east-1
 
-./podyin --postgres-jdbc-url "jdbc:postgresql://host:5432/citus?sslmode=require&user=citus&password=pw" --schema --data --citus
+./podyn --postgres-jdbc-url "jdbc:postgresql://host:5432/citus?sslmode=require&user=citus&password=pw" --schema --data --citus
 
 Constructing table schema for table events
 Moving data for table events
