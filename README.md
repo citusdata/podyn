@@ -159,4 +159,4 @@ pageid   | 347712
 data     | {"ip": "198.51.100.3", "time": "2017-09-18 16:08:36.989788+02", "object": "home_button", "pageid": 347712, "sitename": "citusdata.com"}
 ```
 
-The JSONB mode has an additional advantage that you can safely set up multiple Podyn instances for replicating changes. They will automatically divide the work and if a node fails, the other node(s) will automatically take over its work.
+The JSONB mode has an additional advantage that you can safely set up multiple Podyn instances for replicating changes. They will automatically divide the work and if a node fails, the other node(s) will automatically take over.
