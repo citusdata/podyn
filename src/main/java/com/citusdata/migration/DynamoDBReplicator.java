@@ -102,7 +102,7 @@ public class DynamoDBReplicator {
 			boolean replicateChanges = cmd.hasOption("changes");
 
 			if (wantHelp || (!replicateSchema && !replicateData && !replicateChanges)) {
-				formatter.printHelp("dynamodb-to-postgres", options);
+				formatter.printHelp("podyn", options);
 				return;
 			}
 
@@ -215,7 +215,7 @@ public class DynamoDBReplicator {
 
 		} catch (ParseException e) {
 			LOG.error(e.getMessage());
-			formatter.printHelp("dynamodb-to-postgres", options);
+			formatter.printHelp("podyn", options);
 			System.exit(3);
 		} catch (TableExistsException|NonExistingTableException e) {
 			LOG.error(e.getMessage());

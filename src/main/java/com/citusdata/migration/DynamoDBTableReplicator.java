@@ -75,8 +75,8 @@ public class DynamoDBTableReplicator {
 
 	private static final Log LOG = LogFactory.getLog(DynamoDBTableReplicator.class);
 
-	public static final String APPLICATION_NAME = "dynamodb-to-postgres";
-	public static final String LEASE_TABLE_PREFIX = "d2p_migration_";
+	public static final String APPLICATION_NAME = "podyn";
+	public static final String LEASE_TABLE_PREFIX = "podyn_migration_";
 
 	final AmazonDynamoDBStreams streamsClient;
 	final AmazonDynamoDB dynamoDBClient;
@@ -337,7 +337,7 @@ public class DynamoDBTableReplicator {
 				withCallProcessRecordsEvenForEmptyRecordList(false).
 				withCleanupLeasesUponShardCompletion(false).
 				withFailoverTimeMillis(20000).
-				withTableName("d2p_migration_" + dynamoTableName).
+				withTableName(LEASE_TABLE_PREFIX + dynamoTableName).
 				withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON);
 
 		Worker worker = new Worker.Builder().

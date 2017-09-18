@@ -1,26 +1,26 @@
 # DynamoDB to PostgreSQL / Citus replication
 
-The `dynamodb-to-postgres` tool replicates DynamoDB tables to PostgreSQL tables, which can optionally be distributed using Citus. It can also keep the tables in sync by continuously streaming changes.
+The `podyn` tool replicates DynamoDB tables to PostgreSQL tables, which can optionally be distributed using Citus. It can also keep the tables in sync by continuously streaming changes.
 
 ## Building from source
 
 To build a shaded JAR, run:
 
 ```
-git clone https://github.com/citusdata/dynamodb-to-postgres.git
-cd dynamodb-to-postgres
+git clone https://github.com/citusdata/podyn.git
+cd podyn
 mvn package
 ```
 
-The JAR file will be at `target/dynamodb-to-postgres-1.0.jar`.
+The JAR file will be at `target/podyn-1.0.jar`.
 
 ## Running the JAR file
 
 Once you've built the JAR, you can run it as follows.
 
 ```
-java -jar target/dynamodb-to-postgres-1.0.jar --help
-usage: dynamodb-to-postgres
+./podyn --help
+usage: podyn
  -c,--changes                    Continuously replicate changes
  -d,--data                       Replicate the current data
  -h,--help                       Show help
@@ -43,7 +43,7 @@ After [setting up your AWS credentials](http://docs.aws.amazon.com/sdk-for-java/
 ```
 export AWS_REGION=us-east-1
 
-java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url "jdbc:postgresql://host:5432/citus?sslmode=require&user=citus&password=pw" --schema --data --citus
+./podyin --postgres-jdbc-url "jdbc:postgresql://host:5432/citus?sslmode=require&user=citus&password=pw" --schema --data --citus
 
 Constructing table schema for table events
 Moving data for table events
@@ -58,7 +58,7 @@ When `--schema` is specified, tables will be created in PostgreSQL as described 
 After schema creation and the initial data load, you can continuously stream changes using:
 
 ```
-java -jar target/dynamodb-to-postgres-1.0.jar --postgres-jdbc-url "jdbc:postgresql://host:5432/citus?sslmode=require&user=citus&password=pw" --changes --citus
+./podyn --postgres-jdbc-url "jdbc:postgresql://host:5432/citus?sslmode=require&user=citus&password=pw" --changes --citus
 
 Replicating changes for table events
 ...
