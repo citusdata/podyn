@@ -45,13 +45,13 @@ export AWS_REGION=us-east-1
 
 ./podyn --postgres-jdbc-url "jdbc:postgresql://host:5432/citus?sslmode=require&user=citus&password=pw" --schema --data --citus
 
-Constructing table schema for table events
-Moving data for table events
-Adding new column to table events: name text
-Adding new column to table events: payload jsonb
+Constructing table schema for table clicks
+Moving data for table clicks
+Adding new column to table clicks: ip text
+Adding new column to table clicks: object text
 ```
 
-When `--schema` is specified, tables will be created in PostgreSQL as described in the *Schema conversion rules* section. When the `--data` argument is specified, all the data in the DynamoDB table is scanned in batches. Before a batch is sent to postgres, any fields that did not appear in the existing schema are added as new columns. After the new columns are added, `COPY` is used to load the batch into postgres.
+When `--schema` is specified, tables will be created in PostgreSQL as described in the *Schema conversion rules* section. If `--citus` is specified the tables will be distributed by the DynamoDB partition key. When the `--data` argument is specified, all the data in the DynamoDB table is scanned in batches and `COPY` is used to load the batch into postgres.
 
 ## Stream changes from DynamoDB
 
@@ -60,19 +60,21 @@ After schema creation and the initial data load, you can continuously stream cha
 ```
 ./podyn --postgres-jdbc-url "jdbc:postgresql://host:5432/citus?sslmode=require&user=citus&password=pw" --changes --citus
 
-Replicating changes for table events
+Replicating changes for table clicks
 ...
 ```
 
-The changes are processed in batches and new fields are added to the table as columns. The changes are translated into delete  or upsert statements that are sent to postgres over multiple  connections (specified using `-n`) to achieve high throughput.
+The changes are processed in batches and new fields are added to the table as columns. The changes are translated into delete  or upsert statements that are sent to postgres over multiple connections (specified using `-n`) to achieve high throughput.
 
 When running the command immediately after a data load, some changes that were made prior to the data load may be re-applied, causing the replicated database to temporarily regress. However, since the changes are applied in the same order they will eventually arrive at the current value. After loading a batch of changes into the database, a checkpoint is made. If the tool is restarted, it will continue from its last checkpoint. The checkpoints are stored in DynamoDB tables prefixed with `podyn_migration_`. 
 
-For high availability, it is possible to replicate changes from multiple nodes concurrently, in which case the work will be evenly divided. If a node fails, the other node(s) will automatically take over its work.
-
 ## Schema conversion rules
 
-Top-level keys in DynamoDB items are translated into columns. The initial schema is derived from the partition key, sort key and secondary indexes. When using Citus, the primary partition key becomes the distribution column.
+Podyn currently has two ways of converting a DynamoDB schema to a PostgreSQL schema: `columns` and `jsonb`. The default is `columns`. To use the `jsonb` conversion mode add `-m jsonb` as an argument.
+
+### Columns mode
+
+In the default schema conversion mode (`-m columns`), top-level keys in DynamoDB items are translated into columns. The initial schema is derived from the partition key, sort key and secondary indexes. When using Citus, the primary partition key becomes the distribution column.
 
 DynamoDB types are mapped to PostgreSQL types according to the following table:
 
@@ -96,22 +98,65 @@ CREATE TABLE clicks (
    sitename text NOT NULL,
    "time" text NOT NULL,
    pageid numeric NOT NULL,
-   PRIMARY KEY (site_name, "time")
+   PRIMARY KEY (sitename, "time")
 );
 CREATE INDEX "pageid-index" ON clicks (pageid);
-SELECT create_distributed_table('clicks', 'siteid');
+SELECT create_distributed_table('clicks', 'sitename');
 ```
 
-A new column is added to the PostgreSQL table whenever a new key appears in an item during the initial data load or while replicating changes. For example, if a `payload` (String) key is encountered, the following command would be sent to the database:
+A new column is added to the PostgreSQL table whenever a new key appears in an item during the initial data load or while replicating changes. For example, if `"ip" -> "198.51.100.3"` key is encountered in an item and the table does not have an `ip` column, then the following command is sent to the database:
 
 ```
-ALTER TABLE clicks ADD COLUMN payload text;
+ALTER TABLE clicks ADD COLUMN ip text;
 ```
 
-In DynamoDB, the same key can appear with different types as long as it's it's not part of the primary key or a secondary index. If a key appears that maps to a different PostgreSQL type then the type name is added as a suffix. For example, if an item appears which contains `"clicks" -> true`, then a new column would be added:
+After replicating a single item, the table might look as follows.
 
 ```
-ALTER TABLE clicks ADD COLUMN payload_boolean boolean;
+SELECT * FROM clicks;
+-[ RECORD 1 ]-------------------------------------------------------------------------------------------------------------------------------------
+sitename | citusdata.com
+time     | 2017-09-18 16:08:36.989788+02
+pageid   | 347712
+ip       | 198.51.100.3
+object   | home_button
 ```
 
-There are currently no guarantees in terms of which type is used for the 'main' column. Using the same key for different (postgres) types is best avoided.
+In DynamoDB, the same key can appear with different types as long as it's not part of the primary key or a secondary index. If Podyn encounters a key-value pair with a type that's not compatible with the column type, then a new column is added with the type name added as a suffix. For example, if an item appears which contains `"ip" -> false`, then Podyn would send the following command to PostgreSQL:
+
+```
+ALTER TABLE clicks ADD COLUMN ip_boolean boolean;
+```
+
+If you have keys that have values of different types, or many different top-level keys, then you may want to consider using JSONB mode.
+
+### JSONB mode
+
+In the JSONB conversion mode (`-m jsonb`), the initial schema is never changed. Instead, a single JSONB column is added that  contains the entire DynamoDB item in JSON format.
+
+Constructing the schema in `jsonb` mode is done in the same way as in `columns` mode (partition key and secondary indexes become columns) except with an extra column named `data` with the `jsonb` type. In the `clicks` example, Podyn would send the following statements to PostgreSQL:
+
+```
+CREATE TABLE clicks (
+   sitename text NOT NULL,
+   "time" text NOT NULL,
+   pageid numeric NOT NULL,
+   data jsonb,
+   PRIMARY KEY (sitename, "time")
+);
+CREATE INDEX "pageid-index" ON clicks (pageid);
+SELECT create_distributed_table('clicks', 'sitename');
+```
+
+During replication, the entire DynamoDB item is converted to JSON, including the fields that already appear as columns, for example:
+
+```
+SELECT * FROM clicks;
+-[ RECORD 1 ]-------------------------------------------------------------------------------------------------------------------------------------
+sitename | citusdata.com
+time     | 2017-09-18 16:08:36.989788+02
+pageid   | 347712
+data     | {"ip": "198.51.100.3", "time": "2017-09-18 16:08:36.989788+02", "object": "home_button", "pageid": 347712, "sitename": "citusdata.com"}
+```
+
+The JSONB mode has an additional advantage that you can safely set up multiple Podyn instances for replicating changes. They will automatically divide the work and if a node fails, the other node(s) will automatically take over its work.
