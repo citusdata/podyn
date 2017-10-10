@@ -2,6 +2,8 @@
 
 The `podyn` tool replicates DynamoDB tables to PostgreSQL tables, which can optionally be distributed using Citus. It can also keep the tables in sync by continuously streaming changes.
 
+[Read the Blog post on Podyn](https://www.citusdata.com/blog/2017/09/22/dynamodb-to-postgres-replication/).
+
 ## Building from source
 
 To build a shaded JAR, run:
