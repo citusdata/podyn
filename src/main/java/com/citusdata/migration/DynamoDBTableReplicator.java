@@ -447,7 +447,7 @@ public class DynamoDBTableReplicator {
             }
 
             LOG.info(String.format("Replicated %d changes to table %s", records.size(), tableSchema.tableName));
-        } catch (Exeception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             LOG.error(e);
         }
