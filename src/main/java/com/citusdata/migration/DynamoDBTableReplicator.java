@@ -562,7 +562,7 @@ public class DynamoDBTableReplicator {
             AttributeValue typedValue = entry.getValue();
             TableColumnValue columnValue = columnValueFromDynamoValue(typedValue);
 
-            if (columnValue != null && columnValue.type == column.type) {
+            if (columnValue.type == column.type) {
                 row.setValue(columnName, columnValue);
             } else {
                 row.setValue(columnName + "_" + columnValue.type, columnValue);
@@ -601,8 +601,11 @@ public class DynamoDBTableReplicator {
             return new TableColumnValue(TableColumnType.text, value);
         } else if (typedValue.getSS() != null) {
             List<String> value = typedValue.getSS();
-            return new TableColumnValue(TableColumnType.jsonb, Jackson.toJsonString(value));
-        } else {
+            return new TableColumnValue(TableColumnType.text, Jackson.toJsonString(value));
+        } else if (typedValue.getNULL() != null) {
+            return new TableColumnValue(TableColumnType.text, "");
+        }
+         else {
             return null;
         }
     }
