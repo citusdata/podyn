@@ -214,13 +214,16 @@ public class DynamoDBReplicator {
 			}
 
 		} catch (ParseException e) {
+			e.printStackTrace();
 			LOG.error(e.getMessage());
 			formatter.printHelp("podyn", options);
 			System.exit(3);
 		} catch (TableExistsException|NonExistingTableException e) {
+			e.printStackTrace();
 			LOG.error(e.getMessage());
 			System.exit(1);
 		} catch (ExecutionException e) {
+			e.printStackTrace();
 			Throwable cause = e.getCause();
 
 			if (cause.getCause() != null) {
@@ -230,6 +233,7 @@ public class DynamoDBReplicator {
 			}
 			System.exit(1);
 		} catch (EmissionException e) {
+			e.printStackTrace();
 			if (e.getCause() != null) {
 				LOG.error(e.getCause().getMessage());
 			} else {
@@ -240,6 +244,7 @@ public class DynamoDBReplicator {
 			e.printStackTrace();
 			System.exit(2);
 		} catch (Exception e) {
+			e.printStackTrace();
 			LOG.error(e);
 			System.exit(1);
 		}
