@@ -89,6 +89,10 @@ public class DynamoDBReplicator {
 		maxScanRateOption.setRequired(false);
 		options.addOption(maxScanRateOption);
 
+		Option convertNumberToText = new Option("ntx", "convert-numbers-to-text", false, "Convert Number Types to text");
+		convertNumberToText.setRequired(false);
+		options.addOption(convertNumberToText);
+
 		CommandLineParser parser = new DefaultParser();
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.setWidth(120);
@@ -108,6 +112,7 @@ public class DynamoDBReplicator {
 
 			boolean useCitus = cmd.hasOption("citus");
 			boolean useLowerCaseColumnNames = cmd.hasOption("lower-case-column-names");
+			boolean convertNumbersToText = cmd.hasOption("convert-numbers-to-text");
 			int maxScanRate = Integer.parseInt(cmd.getOptionValue("scan-rate", "25"));
 			int dbConnectionCount = Integer.parseInt(cmd.getOptionValue("num-connections", "16"));
 			String tableNamesString = cmd.getOptionValue("table");
@@ -177,8 +182,8 @@ public class DynamoDBReplicator {
 				replicator.setAddColumnEnabled(true);
 				replicator.setUseCitus(useCitus);
 				replicator.setUseLowerCaseColumnNames(useLowerCaseColumnNames);
+				DynamoDBTableReplicator.setConvertNumberTypesToText(convertNumbersToText);
 				replicator.setConversionMode(conversionMode);
-
 				replicators.add(replicator);
 			}
 

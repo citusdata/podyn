@@ -88,16 +88,13 @@ public class DynamoDBTableReplicator {
     boolean addColumnsEnabled;
     boolean useCitus;
     boolean useLowerCaseColumnNames;
+    private static boolean _convertNumbersToText = false;
     ConversionMode conversionMode;
 
     TableSchema tableSchema;
 
-    public DynamoDBTableReplicator(
-            AmazonDynamoDB dynamoDBClient,
-            AmazonDynamoDBStreams streamsClient,
-            AWSCredentialsProvider awsCredentialsProvider,
-            ExecutorService executorService,
-            TableEmitter emitter,
+    public DynamoDBTableReplicator(AmazonDynamoDB dynamoDBClient, AmazonDynamoDBStreams streamsClient,
+            AWSCredentialsProvider awsCredentialsProvider, ExecutorService executorService, TableEmitter emitter,
             String tableName) throws SQLException {
         this.dynamoDBClient = dynamoDBClient;
         this.streamsClient = streamsClient;
@@ -121,6 +118,10 @@ public class DynamoDBTableReplicator {
 
     public void setUseLowerCaseColumnNames(boolean useLowerCaseColumnNames) {
         this.useLowerCaseColumnNames = useLowerCaseColumnNames;
+    }
+
+    public static void setConvertNumberTypesToText(boolean convertNumbersToText) {
+        _convertNumbersToText = convertNumbersToText;
     }
 
     public void setConversionMode(ConversionMode conversionMode) {
@@ -158,12 +159,12 @@ public class DynamoDBTableReplicator {
             TableColumnType type = TableColumnType.text;
 
             switch (attributeDefinition.getAttributeType()) {
-                case "N":
-                    type = TableColumnType.numeric;
-                    break;
-                case "B":
-                    type = TableColumnType.bytea;
-                    break;
+            case "N":
+                type = TableColumnType.numeric;
+                break;
+            case "B":
+                type = TableColumnType.bytea;
+                break;
             }
 
             tableSchema.addColumn(columnName, type);
@@ -251,7 +252,7 @@ public class DynamoDBTableReplicator {
 
             numRowsReplicated += tableRowBatch.size();
 
-			/* load the batch using COPY */
+            /* load the batch using COPY */
             emitter.copyFromReader(tableSchema, tableRowBatch.asCopyReader());
 
             lastEvaluatedScanKey = scanResult.getLastEvaluatedKey();
@@ -276,14 +277,11 @@ public class DynamoDBTableReplicator {
     }
 
     private ScanResult scanWithRetries(Map<String, AttributeValue> lastEvaluatedScanKey) {
-        ScanRequest scanRequest = new ScanRequest().
-                withTableName(this.dynamoTableName).
-                withConsistentRead(true).
-                withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL).
-                withLimit(100).
-                withExclusiveStartKey(lastEvaluatedScanKey);
+        ScanRequest scanRequest = new ScanRequest().withTableName(this.dynamoTableName).withConsistentRead(true)
+                .withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL).withLimit(100)
+                .withExclusiveStartKey(lastEvaluatedScanKey);
 
-        for (int tryNumber = 1; ; tryNumber++) {
+        for (int tryNumber = 1;; tryNumber++) {
             try {
                 ScanResult scanResult = dynamoDBClient.scan(scanRequest);
                 return scanResult;
@@ -312,7 +310,6 @@ public class DynamoDBTableReplicator {
         return tableStreamArn;
     }
 
-
     public void startReplicatingChanges() throws StreamNotEnabledException {
         if (tableSchema == null) {
             throw new TableExistsException("table %s does not exist in destination", dynamoTableName);
@@ -329,24 +326,16 @@ public class DynamoDBTableReplicator {
 
         String workerId = generateWorkerId();
 
-        final KinesisClientLibConfiguration workerConfig = new KinesisClientLibConfiguration(
-                APPLICATION_NAME, tableStreamArn, awsCredentialsProvider, workerId).
-                withMaxRecords(1000).
-                withIdleTimeBetweenReadsInMillis(500).
-                withCallProcessRecordsEvenForEmptyRecordList(false).
-                withCleanupLeasesUponShardCompletion(false).
-                withFailoverTimeMillis(20000).
-                withTableName(LEASE_TABLE_PREFIX + dynamoTableName).
-                withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON);
+        final KinesisClientLibConfiguration workerConfig = new KinesisClientLibConfiguration(APPLICATION_NAME,
+                tableStreamArn, awsCredentialsProvider, workerId).withMaxRecords(1000)
+                        .withIdleTimeBetweenReadsInMillis(500).withCallProcessRecordsEvenForEmptyRecordList(false)
+                        .withCleanupLeasesUponShardCompletion(false).withFailoverTimeMillis(20000)
+                        .withTableName(LEASE_TABLE_PREFIX + dynamoTableName)
+                        .withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON);
 
-        Worker worker = new Worker.Builder().
-                recordProcessorFactory(recordProcessorFactory).
-                config(workerConfig).
-                kinesisClient(adapterClient).
-                cloudWatchClient(cloudWatchClient).
-                dynamoDBClient(dynamoDBClient).
-                execService(executor).
-                build();
+        Worker worker = new Worker.Builder().recordProcessorFactory(recordProcessorFactory).config(workerConfig)
+                .kinesisClient(adapterClient).cloudWatchClient(cloudWatchClient).dynamoDBClient(dynamoDBClient)
+                .execService(executor).build();
 
         executor.execute(worker);
     }
@@ -365,7 +354,8 @@ public class DynamoDBTableReplicator {
             public void initialize(InitializationInput initializationInput) {
             }
 
-            public List<Record> extractDynamoStreamRecords(List<com.amazonaws.services.kinesis.model.Record> kinesisRecords) {
+            public List<Record> extractDynamoStreamRecords(
+                    List<com.amazonaws.services.kinesis.model.Record> kinesisRecords) {
                 List<Record> dynamoRecords = new ArrayList<>(kinesisRecords.size());
 
                 for (com.amazonaws.services.kinesis.model.Record kinesisRecord : kinesisRecords) {
@@ -397,7 +387,8 @@ public class DynamoDBTableReplicator {
             void checkpoint(IRecordProcessorCheckpointer checkpointer) {
                 try {
                     checkpointer.checkpoint();
-                } catch (KinesisClientLibDependencyException | InvalidStateException | ThrottlingException | ShutdownException e) {
+                } catch (KinesisClientLibDependencyException | InvalidStateException | ThrottlingException
+                        | ShutdownException e) {
                     LOG.warn(e);
                 }
             }
@@ -422,25 +413,25 @@ public class DynamoDBTableReplicator {
                 StreamRecord streamRecord = dynamoRecord.getDynamodb();
 
                 switch (dynamoRecord.getEventName()) {
-                    case "INSERT":
-                    case "MODIFY":
-                        Map<String, AttributeValue> dynamoItem = streamRecord.getNewImage();
+                case "INSERT":
+                case "MODIFY":
+                    Map<String, AttributeValue> dynamoItem = streamRecord.getNewImage();
 
-                        if (dynamoItem == null) {
-                            LOG.error(String.format("the stream for table %s does not have new images", dynamoTableName));
-                            System.exit(1);
-                        }
+                    if (dynamoItem == null) {
+                        LOG.error(String.format("the stream for table %s does not have new images", dynamoTableName));
+                        System.exit(1);
+                    }
 
-                        TableRow tableRow = rowFromDynamoRecord(dynamoItem);
-                        emitter.upsert(tableRow);
-                        LOG.debug(tableRow.toUpsert());
-                        break;
-                    case "REMOVE":
-                        Map<String, AttributeValue> dynamoKeys = streamRecord.getKeys();
-                        PrimaryKeyValue keyValue = primaryKeyValueFromDynamoKeys(dynamoKeys);
-                        emitter.delete(keyValue);
-                        LOG.debug(keyValue.toDelete());
-                        break;
+                    TableRow tableRow = rowFromDynamoRecord(dynamoItem);
+                    emitter.upsert(tableRow);
+                    LOG.debug(tableRow.toUpsert());
+                    break;
+                case "REMOVE":
+                    Map<String, AttributeValue> dynamoKeys = streamRecord.getKeys();
+                    PrimaryKeyValue keyValue = primaryKeyValueFromDynamoKeys(dynamoKeys);
+                    emitter.delete(keyValue);
+                    LOG.debug(keyValue.toDelete());
+                    break;
                 }
 
                 LOG.debug(streamRecord);
@@ -555,7 +546,7 @@ public class DynamoDBTableReplicator {
             TableColumn column = tableSchema.getColumn(columnName);
 
             if (column == null) {
-				/* skip non-existent columns */
+                /* skip non-existent columns */
                 continue;
             }
 
@@ -591,8 +582,13 @@ public class DynamoDBTableReplicator {
             Item simpleMap = Item.fromMap(InternalUtils.toSimpleMapValue(value));
             return new TableColumnValue(TableColumnType.jsonb, simpleMap.toJSON());
         } else if (typedValue.getN() != null) {
-            String value = typedValue.getN();
-            return new TableColumnValue(TableColumnType.numeric, value);
+            if (_convertNumbersToText == true) {
+                String value = typedValue.getN();
+                return new TableColumnValue(TableColumnType.text, value);
+            } else {
+                String value = typedValue.getN();
+                return new TableColumnValue(TableColumnType.numeric, value);
+            }
         } else if (typedValue.getNS() != null) {
             List<String> value = typedValue.getNS();
             return new TableColumnValue(TableColumnType.jsonb, Jackson.toJsonString(value));
@@ -604,8 +600,7 @@ public class DynamoDBTableReplicator {
             return new TableColumnValue(TableColumnType.text, Jackson.toJsonString(value));
         } else if (typedValue.getNULL() != null) {
             return new TableColumnValue(TableColumnType.text, "");
-        }
-         else {
+        } else {
             return null;
         }
     }
@@ -622,7 +617,10 @@ public class DynamoDBTableReplicator {
         } else if (typedValue.getM() != null) {
             return TableColumnType.jsonb;
         } else if (typedValue.getN() != null) {
-            return TableColumnType.numeric;
+            if (_convertNumbersToText == true) {
+                return TableColumnType.text;
+            } else
+                return TableColumnType.numeric;
         } else if (typedValue.getNS() != null) {
             return TableColumnType.jsonb;
         } else if (typedValue.getS() != null) {
@@ -633,6 +631,5 @@ public class DynamoDBTableReplicator {
             return TableColumnType.text;
         }
     }
-
 
 }
