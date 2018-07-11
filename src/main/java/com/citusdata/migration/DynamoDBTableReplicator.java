@@ -88,7 +88,7 @@ public class DynamoDBTableReplicator {
     boolean addColumnsEnabled;
     boolean useCitus;
     boolean useLowerCaseColumnNames;
-    private static boolean _convertNumbersToText = false;
+    boolean convertNumbersToText;
     ConversionMode conversionMode;
 
     TableSchema tableSchema;
@@ -105,6 +105,7 @@ public class DynamoDBTableReplicator {
         this.addColumnsEnabled = true;
         this.useCitus = false;
         this.useLowerCaseColumnNames = false;
+        this.convertNumbersToText = false;
         this.tableSchema = emitter.fetchSchema(this.dynamoTableName);
     }
 
@@ -120,8 +121,8 @@ public class DynamoDBTableReplicator {
         this.useLowerCaseColumnNames = useLowerCaseColumnNames;
     }
 
-    public static void setConvertNumberTypesToText(boolean convertNumbersToText) {
-        _convertNumbersToText = convertNumbersToText;
+    public void setConvertNumberTypesToText(boolean convertNumbersToText) {
+        this.convertNumbersToText = convertNumbersToText;
     }
 
     public void setConversionMode(ConversionMode conversionMode) {
@@ -454,7 +455,7 @@ public class DynamoDBTableReplicator {
             String keyName = entry.getKey();
             String columnName = dynamoKeyToColumnName(keyName);
             TableColumn column = tableSchema.getColumn(columnName);
-            TableColumnType valueType = DynamoDBTableReplicator.columnTypeFromDynamoValue(entry.getValue());
+            TableColumnType valueType = DynamoDBTableReplicator.columnTypeFromDynamoValue(entry.getValue(), this.convertNumbersToText);
 
             if (column == null) {
                 column = tableSchema.addColumn(columnName, valueType);
@@ -484,7 +485,9 @@ public class DynamoDBTableReplicator {
                 continue;
             }
 
-            TableColumnValue columnValue = DynamoDBTableReplicator.columnValueFromDynamoValue(entry.getValue());
+
+
+            TableColumnValue columnValue = DynamoDBTableReplicator.columnValueFromDynamoValue(entry.getValue(), this.convertNumbersToText);
 
             keyValue.setValue(columnName, columnValue);
         }
@@ -523,7 +526,7 @@ public class DynamoDBTableReplicator {
             String columnName = dynamoKeyToColumnName(keyName);
             TableColumn column = tableSchema.getColumn(columnName);
             AttributeValue typedValue = entry.getValue();
-            TableColumnValue columnValue = columnValueFromDynamoValue(typedValue);
+            TableColumnValue columnValue = columnValueFromDynamoValue(typedValue, this.convertNumbersToText);
 
             if (column != null) {
                 row.setValue(columnName, columnValue);
@@ -551,7 +554,7 @@ public class DynamoDBTableReplicator {
             }
 
             AttributeValue typedValue = entry.getValue();
-            TableColumnValue columnValue = columnValueFromDynamoValue(typedValue);
+            TableColumnValue columnValue = columnValueFromDynamoValue(typedValue, this.convertNumbersToText);
 
             if (columnValue.type == column.type) {
                 row.setValue(columnName, columnValue);
@@ -563,7 +566,7 @@ public class DynamoDBTableReplicator {
         return row;
     }
 
-    public static TableColumnValue columnValueFromDynamoValue(AttributeValue typedValue) {
+    public static TableColumnValue columnValueFromDynamoValue(AttributeValue typedValue, boolean convertNumberToText) {
         if (typedValue.getB() != null) {
             ByteBuffer value = typedValue.getB();
             return new TableColumnValue(TableColumnType.bytea, value.array());
@@ -582,7 +585,7 @@ public class DynamoDBTableReplicator {
             Item simpleMap = Item.fromMap(InternalUtils.toSimpleMapValue(value));
             return new TableColumnValue(TableColumnType.jsonb, simpleMap.toJSON());
         } else if (typedValue.getN() != null) {
-            if (_convertNumbersToText == true) {
+            if (convertNumberToText == true) {
                 String value = typedValue.getN();
                 return new TableColumnValue(TableColumnType.text, value);
             } else {
@@ -605,7 +608,7 @@ public class DynamoDBTableReplicator {
         }
     }
 
-    public static TableColumnType columnTypeFromDynamoValue(AttributeValue typedValue) {
+    public static TableColumnType columnTypeFromDynamoValue(AttributeValue typedValue,  boolean convertNumberToText) {
         if (typedValue.getB() != null) {
             return TableColumnType.bytea;
         } else if (typedValue.getBOOL() != null) {
@@ -617,7 +620,7 @@ public class DynamoDBTableReplicator {
         } else if (typedValue.getM() != null) {
             return TableColumnType.jsonb;
         } else if (typedValue.getN() != null) {
-            if (_convertNumbersToText == true) {
+            if (convertNumberToText == true) {
                 return TableColumnType.text;
             } else
                 return TableColumnType.numeric;

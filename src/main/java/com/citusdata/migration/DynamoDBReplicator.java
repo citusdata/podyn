@@ -182,7 +182,7 @@ public class DynamoDBReplicator {
 				replicator.setAddColumnEnabled(true);
 				replicator.setUseCitus(useCitus);
 				replicator.setUseLowerCaseColumnNames(useLowerCaseColumnNames);
-				DynamoDBTableReplicator.setConvertNumberTypesToText(convertNumbersToText);
+				replicator.setConvertNumberTypesToText(convertNumbersToText);
 				replicator.setConversionMode(conversionMode);
 				replicators.add(replicator);
 			}
