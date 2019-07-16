@@ -560,10 +560,11 @@ public class DynamoDBTableReplicator {
 			AttributeValue typedValue = entry.getValue();
 			TableColumnValue columnValue = columnValueFromDynamoValue(typedValue);
 
-			if (columnValue.type == column.type) {
+			if( columnValue == null ){
+				row.setValue(columnName, null);
+			}else if (columnValue.type == column.type) {
 				row.setValue(columnName, columnValue);
 			} else {
-
 				row.setValue(columnName + "_" + columnValue.type, columnValue);
 			}
 		}
