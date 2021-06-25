@@ -11,7 +11,7 @@ public class TableIndex {
 
 	public TableIndex(String tableName, String name, List<String> columnNames) {
 		this.tableName = tableName;
-		this.name = String.join("-", this.tableName, name);
+		this.name = String.join("_", this.tableName, name);
 		this.columnNames = columnNames;
 	}
 	
