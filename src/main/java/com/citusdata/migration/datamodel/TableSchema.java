@@ -24,11 +24,11 @@ public class TableSchema {
 	private List<TableIndex> tableIndexes;
 
 	public TableSchema(String tableName) {
-		this(tableName, null);
+		this(tableName.replace("-","_"), null);
 	}
 
 	public TableSchema(String tableName, String schemaName) {
-		this.tableName = tableName;
+		this.tableName = tableName.replace("-","_");
 		this.schemaName = schemaName;
 		this.columns = new LinkedHashMap<>();
 		this.primaryKey = null;
