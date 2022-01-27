@@ -581,15 +581,15 @@ public class DynamoDBTableReplicator {
 			return new TableColumnValue(TableColumnType.bool, value);
 		} else if (typedValue.getBS() != null) {
 			List<ByteBuffer> value = typedValue.getBS();
-			return new TableColumnValue(TableColumnType.jsonb, Jackson.toJsonString(value));
+			return new TableColumnValue(TableColumnType.jsonb, cleanupJson(Jackson.toJsonString(value)));
 		} else if (typedValue.getL() != null) {
 			List<AttributeValue> value = typedValue.getL();
 			List<Object> simpleList = InternalUtils.toSimpleList(value);
-			return new TableColumnValue(TableColumnType.jsonb, Jackson.toJsonString(simpleList));
+			return new TableColumnValue(TableColumnType.jsonb, cleanupJson(Jackson.toJsonString(simpleList)));
 		} else if (typedValue.getM() != null) {
-			Map<String,AttributeValue> value = typedValue.getM();
+			Map<String, AttributeValue> value = typedValue.getM();
 			Item simpleMap = Item.fromMap(InternalUtils.toSimpleMapValue(value));
-			return new TableColumnValue(TableColumnType.jsonb, simpleMap.toJSON());
+			return new TableColumnValue(TableColumnType.jsonb, cleanupJson(simpleMap.toJSON()));
 		} else if (typedValue.getN() != null) {
 			String value = typedValue.getN();
 			return new TableColumnValue(TableColumnType.numeric, value);
@@ -597,14 +597,17 @@ public class DynamoDBTableReplicator {
 			List<String> value = typedValue.getNS();
 			return new TableColumnValue(TableColumnType.jsonb, Jackson.toJsonString(value));
 		} else if (typedValue.getS() != null) {
-			String value = typedValue.getS();
-			return new TableColumnValue(TableColumnType.text, value);
+			return new TableColumnValue(TableColumnType.text, cleanupJson(typedValue.getS()));
 		} else if (typedValue.getSS() != null) {
 			List<String> value = typedValue.getSS();
-			return new TableColumnValue(TableColumnType.jsonb, Jackson.toJsonString(value));
+			return new TableColumnValue(TableColumnType.jsonb, cleanupJson(Jackson.toJsonString(value)));
 		} else {
 			return null;
 		}
+	}
+
+	private static String cleanupJson(String value) {
+		return value.replaceAll("\\\\u0000", "").replaceAll("\u0000", "");
 	}
 
 	public static TableColumnType columnTypeFromDynamoValue(AttributeValue typedValue) {
